@@ -1,6 +1,6 @@
 {
   "name": "intelligence",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "browserify-middleware": "^8.1.1",
+    "dat.gui": "^0.7.7",
     "jquery": "^3.5.1",
     "lodash": "^4.17.15",
     "three": "^0.118.3",

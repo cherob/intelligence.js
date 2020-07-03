@@ -15,6 +15,11 @@ class Neuron {
         this.synapses = []; // outgoing
         this.dendrites = []; // incoming
 
+        this.voltage = 0;
+    }
+
+    input(v) {
+        this.voltage += v
     }
 }
 module.exports = Neuron;

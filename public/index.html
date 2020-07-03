@@ -2,7 +2,22 @@
 
 <head>
     <title>My first three.js app</title>
+    <script>
+        var x = null;
+        var y = null;
 
+        document.addEventListener('mousemove', onMouseUpdate, false);
+        document.addEventListener('mouseenter', onMouseUpdate, false);
+
+        function onMouseUpdate(e) {
+            x = (event.clientX / window.innerWidth) * 2 - 1;
+            y = - (event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function getMouse() {
+            return { x: x, y: y };
+        }
+    </script>
     <style>
         body {
             margin: 0;
@@ -15,6 +30,7 @@
 </head>
 
 <body>
+
     <script type="text/javascript" src="/js/Intelligence.js"></script>
 </body>
 

@@ -1,6 +1,6 @@
 module.exports = {
     volume: {
-        CIRCULAR: (dimeter) => {
+        CIRCULAR: (dimeter = 1) => {
             return () => {
                 let d, x, y, z;
                 do {
@@ -21,18 +21,24 @@ module.exports = {
             }
         },
     },
-    connection: {
-        CLOSE: (other, another) => {
-            var radius = 0.001;
+    connector: {
+        CLOSE: (radius = 1 / 4) => {
+            return (other, another) => {
 
-            let d = Math.pow((
-                Math.pow((another.x - other.x), 2) +
-                Math.pow((another.y - other.y), 2) +
-                Math.pow((another.z - other.z), 2)), 0.5)
-            if (d < radius)
-                return true;
-            else
-                return false
+                let d = Math.pow((
+                    Math.pow((another.position.x - other.position.x), 2) +
+                    Math.pow((another.position.y - other.position.y), 2) +
+                    Math.pow((another.position.z - other.position.z), 2)), 0.5)
+                if (d < radius && other != another)
+                    return true;
+                else
+                    return false
+            }
+        }
+    },
+    activation: {
+        SIGMOID: (t) => {
+            return 1/(1+Math.pow(Math.E, -t))
         }
     }
 }
