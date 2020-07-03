@@ -47,7 +47,7 @@ module.exports = {
     },
     size: {
         RANDOM: () => {
-            return Math.random()/10;
+            return Math.random() / 2 + 1 / 2;
         }
     }
 }

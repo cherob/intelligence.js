@@ -6,7 +6,8 @@ const Network = require('./Network');
 class Engine {
     constructor() {
         this.scene = new THREE.Scene()
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+        this.scene.background = new THREE.Color(0xf5eded)
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100)
         this.camera.position.z = 20
 
         this.renderer = new THREE.WebGLRenderer()
@@ -34,8 +35,8 @@ class Engine {
     }
 
     render() {
+        // this.updateIntersect();
         this.camera.updateMatrixWorld();
-        this.updateIntersect();
         this.controls.update();
         this.renderer.render(this.scene, this.camera)
     }
@@ -44,20 +45,24 @@ class Engine {
      * 
      * @param {Network} net 
      */
-    update(net){
-        net.neurons.forEach(neuron => {
+    update(net) {
+        net.neurons.forEach((neuron, i) => {
             let n = this.scene.getObjectByName(neuron.id)
-            n.material.color = {r: neuron.value, g: 0.1, b: 0.1};
-        })  
+            n.material.color = {
+                r: i == 0 ? 1 : neuron.value,
+                g: i == 0 ? 1 : neuron.value*0.2,
+                b: i == 0 ? 1 : neuron.value*0.2
+            };
+        })
     }
 
     /**
      * 
      * @param {Network} net 
      */
-    build(net, render = false) {
+    build(net) {
         net.neurons.forEach((neuron, i) => {
-            var geometry = new THREE.SphereGeometry((neuron.size + 1) / 10, 32, 32);
+            var geometry = new THREE.SphereGeometry(neuron.size / 2, 32, 32);
             var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
                 color: neuron.color
             }));
@@ -76,44 +81,25 @@ class Engine {
                 var geometry = new THREE.BufferGeometry().setFromPoints(points);
 
                 var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-                    color: 0xff00ff,
-                    linewidth: 100
+                    color: 0x0
                 }));
-                this.scene.add(line);
+                // this.scene.add(line);
             })
         })
-
-        if (render)
-            setInterval(() => {
-                this.render()
-            }, 1000/27.5);
     }
 
     updateIntersect() {
         // find intersections
         this.raycaster.setFromCamera(getMouse(), this.camera);
 
-        // if (this.selected)
-           
-
         // calculate objects intersecting the picking ray
         var intersects = this.raycaster.intersectObjects(this.scene.children);
         intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
         if (intersects.length) {
             this.selected = intersects[0];
-            // intersects[0].object.material.color = {
-            //     r: 1,
-            //     g: 1,
-            //     b: 1
-            // }
         }
     }
 
-    onWindowResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
 
 }
 

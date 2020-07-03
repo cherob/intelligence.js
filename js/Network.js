@@ -4,6 +4,7 @@ const Functions = require('./Functions');
 const {
     valHooks
 } = require('jquery');
+const { times } = require('lodash');
 
 class Network {
     constructor() {
@@ -47,48 +48,47 @@ class Network {
                 dendrites: undefined
             }));
         });
-
-        // if (clean)
-        //     this.cleanup()
-    }
-
-    cleanup() {
-        // this.neurons = this.neurons.filter((neuron) => {
-        //     if (neuron.synapses.length) return true
-        //     if (neuron.dendrites.length) return true
-        // })
     }
 
     wakeup(engine) {
-
         let inverval = 0;
         setInterval(() => {
-            if ((inverval % 1) == 0){
+            if ((inverval % 30) == 0) {
                 this.impulse(0, Math.random())
             }
-            inverval++;
+
+            if ((inverval % 1) == 0) {
+                this.neurons.forEach(neuron => {
+                    neuron.value *= 0.95
+                })
+            }
+
             engine.update(this)
             engine.render();
-            if (!this.impulses.length) return;
-            console.log(this.impulses.length)
-            this.impulses = this.impulses.filter((call, i) => {
-                let index = getIndexByID(this.neurons, call.id);
-                this.impulse(index, call.value)
-                return false;
-            })
-        }, 1000 / 27.5);
+
+            if (!this.impulses.length) {
+                inverval++;
+                let new_impulses = this.listActivations(Function.activation.SIGMOID)
+                this.impulses = this.impulses.concat(...new_impulses);
+            } else {
+                let index = getIndexByID(this.neurons, this.impulses[0].id);
+                this.impulse(index, this.impulses[0].value)
+                this.impulses.shift();
+            }
+            engine.render();
+        }, 1000/144);
     }
 
+    /**
+     * 
+     * @param {Number} i index
+     * @param {Number} value signal 
+     */
     impulse(i, value) {
         this.neurons[i].synapses.forEach(synapse => {
             let index = getIndexByID(this.neurons, synapse.id);
-            this.neurons[index].value += value
+            this.neurons[index].value += value * synapse.weight
         });
-
-
-        let new_impulses = this.listActivations(Function.activation.SIGMOID)
-        this.impulses = this.impulses.concat(...new_impulses);
-
     }
 
     listActivations() {

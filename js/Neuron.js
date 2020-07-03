@@ -24,11 +24,13 @@ class Neuron {
         this.value = 0;
     }
 
+    
+
     impulse() {
         let i = 0
-        i = this.activator(this.value * this.size);
-        if (i > 0.5) {
-            this.value = this.value*0.3;
+        i = this.activator(this.value);
+        if (i > this.size) {
+            this.value = 0;
             return i;
         }
         return 0
