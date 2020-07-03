@@ -4,10 +4,10 @@ const dat = require('dat.gui');
 const Network = require('./Network');
 
 class Engine {
-    constructor(frame_rate = 27.5) {
+    constructor() {
         this.scene = new THREE.Scene()
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-        this.camera.position.z = 10
+        this.camera.position.z = 20
 
         this.renderer = new THREE.WebGLRenderer()
         this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -30,10 +30,7 @@ class Engine {
          */
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-        /** Render
-         * Start rendring functions
-         */
-        let frames = setInterval(() => this.render(), 1000 / frame_rate);
+
     }
 
     render() {
@@ -47,18 +44,29 @@ class Engine {
      * 
      * @param {Network} net 
      */
-    connect(net) {
+    update(net){
         net.neurons.forEach(neuron => {
-            var geometry = new THREE.SphereGeometry((neuron.bias + 1) / 10, 32, 32);
+            let n = this.scene.getObjectByName(neuron.id)
+            n.material.color = {r: neuron.value, g: 0.1, b: 0.1};
+        })  
+    }
+
+    /**
+     * 
+     * @param {Network} net 
+     */
+    build(net, render = false) {
+        net.neurons.forEach((neuron, i) => {
+            var geometry = new THREE.SphereGeometry((neuron.size + 1) / 10, 32, 32);
             var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-                color: 0xffff00
+                color: neuron.color
             }));
             sphere.position.x = neuron.position.x
             sphere.position.y = neuron.position.y
             sphere.position.z = neuron.position.z
+            sphere.uuid = neuron.id
+            sphere.name = neuron.id
             this.scene.add(sphere);
-
-            
 
             neuron.synapses.forEach(synapse => {
                 var points = [];
@@ -71,34 +79,33 @@ class Engine {
                     color: 0xff00ff,
                     linewidth: 100
                 }));
-                line.uuid = synapse.id
                 this.scene.add(line);
             })
         })
 
+        if (render)
+            setInterval(() => {
+                this.render()
+            }, 1000/27.5);
     }
 
     updateIntersect() {
         // find intersections
         this.raycaster.setFromCamera(getMouse(), this.camera);
 
-        if (this.selected)
-            this.selected.object.material.color = {
-                r: 1,
-                g: 1,
-                b: 0
-            }
+        // if (this.selected)
+           
 
         // calculate objects intersecting the picking ray
         var intersects = this.raycaster.intersectObjects(this.scene.children);
         intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
         if (intersects.length) {
-            intersects[0].object.material.color = {
-                r: 1,
-                g: 1,
-                b: 1
-            }
             this.selected = intersects[0];
+            // intersects[0].object.material.color = {
+            //     r: 1,
+            //     g: 1,
+            //     b: 1
+            // }
         }
     }
 

@@ -29,7 +29,11 @@ module.exports = {
                     Math.pow((another.position.x - other.position.x), 2) +
                     Math.pow((another.position.y - other.position.y), 2) +
                     Math.pow((another.position.z - other.position.z), 2)), 0.5)
-                if (d < radius && other != another)
+
+                let already_connected = another.synapses.filter(synapse => {
+                    return synapse.id == other.id
+                }).length == 1;
+                if (d < radius && other.id != another.id && !already_connected)
                     return true;
                 else
                     return false
@@ -38,7 +42,12 @@ module.exports = {
     },
     activation: {
         SIGMOID: (t) => {
-            return 1/(1+Math.pow(Math.E, -t))
+            return 1 / (1 + Math.pow(Math.E, -t))
+        }
+    },
+    size: {
+        RANDOM: () => {
+            return Math.random()/10;
         }
     }
 }
