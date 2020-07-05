@@ -34,8 +34,32 @@ class Engine {
 
     }
 
-    render() {
-        // this.updateIntersect();
+    /**
+     * 
+     * @param {Network} net 
+     */
+    update(net) {
+        net.neurons.forEach((neuron, i) => {
+            let n = this.scene.getObjectByName(neuron.uuid)
+            if (this.selected) {
+                if (neuron.uuid == this.selected.object.name) {
+                    n.material.color = {
+                        r: 0.7,
+                        g: 0.7,
+                        b: neuron.value * 0.2
+                    };
+                    return;
+                }
+            }
+
+            n.material.color = {
+                r: neuron.value,
+                g: neuron.value * 0.2,
+                b: neuron.value * 0.2
+            };
+        })
+
+        this.updateIntersect(net);
         this.camera.updateMatrixWorld();
         this.controls.update();
         this.renderer.render(this.scene, this.camera)
@@ -45,26 +69,11 @@ class Engine {
      * 
      * @param {Network} net 
      */
-    update(net) {
-        net.neurons.forEach((neuron, i) => {
-            let n = this.scene.getObjectByName(neuron.id)
-            if (neuron.value != 0)
-                n.material.color = {
-                    r: neuron.value,
-                    g: neuron.value * 0.2,
-                    b: neuron.value * 0.2
-                };
-            // if (neuron.outgoing_impulse !== 0)
-        })
-    }
+    build(net, lines = true) {
+        net.neurons.forEach(neuron => {
 
-    /**
-     * 
-     * @param {Network} net 
-     */
-    build(net) {
-        net.neurons.forEach((neuron, i) => {
-            var geometry = new THREE.SphereGeometry(neuron.size / 2, 32, 32);
+
+            var geometry = new THREE.SphereGeometry(neuron.size, 32, 32);
             var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
                 color: 0x000000
             }));
@@ -73,26 +82,31 @@ class Engine {
             sphere.position.x = neuron.position.x
             sphere.position.y = neuron.position.y
             sphere.position.z = neuron.position.z
-            sphere.uuid = neuron.id
-            sphere.name = neuron.id
+            sphere.uuid = neuron.uuid
+            sphere.name = neuron.uuid
             this.scene.add(sphere);
 
-            neuron.synapses.forEach(synapse => {
-                var points = [];
-                points.push(new THREE.Vector3(synapse.position.x, synapse.position.y, synapse.position.z));
-                points.push(new THREE.Vector3(neuron.position.x, neuron.position.y, neuron.position.z));
+            if (lines)
+                neuron.synapses.forEach(synapse => {
+                    var points = [];
+                    points.push(new THREE.Vector3(synapse.position.x, synapse.position.y, synapse.position.z));
+                    points.push(new THREE.Vector3(neuron.position.x, neuron.position.y, neuron.position.z));
+    
+                    var geometry = new THREE.BufferGeometry().setFromPoints(points);
 
-                var geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-                var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-                    color: 0x0
-                }));
-                this.scene.add(line);
-            })
+                    var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+                        color: 0x0
+                    }));
+                    this.scene.add(line);
+                })
         })
     }
 
-    updateIntersect() {
+    /**
+     * 
+     * @param {Network} net 
+     */
+    updateIntersect(net) {
         // find intersections
         this.raycaster.setFromCamera(getMouse(), this.camera);
 
@@ -101,6 +115,8 @@ class Engine {
         intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
         if (intersects.length) {
             this.selected = intersects[0];
+        } else {
+            this.selected = undefined
         }
     }
 

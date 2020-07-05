@@ -6,9 +6,12 @@ class Neuron {
             defaults
         } = this.constructor;
         this.activator = activator;
-        this.connectifity = 1;
+        this.connectifity = 0.8;
+        this.capacity = 3;
 
-        this.id = uuid.v4(); // ID
+        this.tolerance = 0.5;
+
+        this.uuid = uuid.v4(); // uuid
 
         this.size = size();
 
@@ -26,10 +29,12 @@ class Neuron {
 
     impulse() {
         let i = 0
-        // this.value = 0;
         i = this.activator(this.value);
-        if (i > this.size)
+        this.value = 0;
+        if (i  > this.tolerance){
+            this.tolerance *= 0.9;
             return i
+        }
     }
 }
 module.exports = Neuron;

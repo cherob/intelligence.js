@@ -7,6 +7,7 @@ const {
 const {
     times
 } = require('lodash');
+const Engine = require('./Engine');
 
 class Network {
     constructor() {
@@ -31,65 +32,52 @@ class Network {
 
     connectNeurons(connector) {
         this.neurons.forEach((neuron) => {
-            this.neurons.forEach(other_neuron => {
-                if (connector(neuron, other_neuron))
-                    neuron.synapses.push(other_neuron)
-            });
-            neuron.synapses = neuron.synapses.map(other_neuron => {
-                other_neuron.weight = Math.random();
-                // need way here for no recurrent
-                // other_neuron.synapses = [];
-                // other_neuron.dendrites = [];
-                return other_neuron
-            })
+            neuron.synapses = connector(neuron, this.neurons)
         });
 
         this.neurons.forEach((neuron) => {
             this.neurons.forEach(other_neuron => {
-                if (neuron.synapses.map((b) => b.id) == other_neuron.id.indexOf())
-                    neuron.dendrites.push(other_neuron)
+                if (neuron.synapses.map((b) => b.uuid) == other_neuron.uuid.indexOf())
+                    neuron.dendrites.push({
+                        position: other_neuron.position,
+                        uuid: other_neuron.uuid
+                    })
             });
-
-            neuron.dendrites = neuron.dendrites.map(other_neuron => {
-                // need way here for no recurrent
-                // other_neuron.synapses = [];
-                // other_neuron.dendrites = [];
-                return other_neuron
-            })
         });
     }
 
+    /**
+     * 
+     * @param {Engine} engine 
+     */
     wakeup(engine) {
-        this.impulse(Math.round(Math.random() * this.neurons.length), 1)
         let inverval = 0;
+        // console.log(this.impulses)
         setInterval(() => {
-            // add this per function
-            // if ((inverval % 1) == 0) {
-            //     this.impulse(Math.round(Math.random() * this.neurons.length), Math.random())
-            // }
-
-
             if ((inverval % 10) == 0) {
-                if ((inverval % 1) == 0) {
-                    this.neurons.forEach(neuron => {
-                        // degrece
-                        neuron.value *= 0.7
-                    })
-                }
 
                 if (!this.impulses.length) {
                     let new_impulses = this.listActivations(Function.activation.SIGMOID)
+                    // console.log(this.impulses.length)
                     this.impulses = this.impulses.concat(...new_impulses);
                 } else {
-                    let index_to = getIndexByID(this.neurons, this.impulses[0].id);
-                    // let index_from = getIndexByID(this.neurons, this.impulses[0].from);
+                    let index_to = getIndexByUUID(this.neurons, this.impulses[0].uuid);
                     this.impulse(index_to, this.impulses[0].value)
                     this.impulses.shift();
+                    if ((inverval % 1) == 0) {
+                        this.neurons.forEach(
+                            neuron => {
+                                if (neuron.value > 0.5)
+                                    neuron.value -= neuron.value * 0.9;
+                                if (neuron.tolerance < 0.5)
+                                    neuron.tolerance += (0.5 - neuron.tolerance) * 0.9
+                            })
+                    }
                 }
+
             }
 
             engine.update(this)
-            engine.render();
             inverval++;
         }, 1000 / 144);
     }
@@ -101,7 +89,7 @@ class Network {
      */
     impulse(i, value) {
         this.neurons[i].synapses.forEach(synapse => {
-            let index = getIndexByID(this.neurons, synapse.id);
+            let index = getIndexByUUID(this.neurons, synapse.uuid);
             this.neurons[index].value += value * synapse.weight
         });
     }
@@ -113,8 +101,8 @@ class Network {
             if (!value) return;
             neuron.synapses.forEach(synapse => {
                 tasks.push({
-                    from: neuron.id,
-                    id: synapse.id,
+                    from: neuron.uuid,
+                    uuid: synapse.uuid,
                     value: value * synapse.weight
                 })
             })
@@ -124,10 +112,10 @@ class Network {
     }
 }
 
-function getIndexByID(arr, b) {
+function getIndexByUUID(arr, uuid) {
     let index = -1;
     arr.forEach((a, i) => {
-        if (a.id == b) index = i;
+        if (a.uuid == uuid) index = i;
     })
     return index
 }
