@@ -4,7 +4,9 @@ const Functions = require('./Functions');
 const {
     valHooks
 } = require('jquery');
-const { times } = require('lodash');
+const {
+    times
+} = require('lodash');
 
 class Network {
     constructor() {
@@ -27,56 +29,69 @@ class Network {
         this.neurons = this.neurons.concat(...neurons);
     }
 
-    connectNeurons(connector, clean = true) {
+    connectNeurons(connector) {
         this.neurons.forEach((neuron) => {
-            neuron.synapses = this.neurons.filter(other_neuron => connector(neuron, other_neuron));
-
-
-            neuron.synapses = neuron.synapses.map(other_neuron => Object.assign({}, other_neuron, {
-                weight: Math.random(),
-                synapses: undefined,
-                dendrites: undefined
-            }));
-        });
-        this.neurons.forEach((neuron) => {
-            neuron.dendrites = this.neurons.filter((a) => {
-                neuron.synapses.map((b) => b.id) == a.id.indexOf()
+            this.neurons.forEach(other_neuron => {
+                if (connector(neuron, other_neuron))
+                    neuron.synapses.push(other_neuron)
+            });
+            neuron.synapses = neuron.synapses.map(other_neuron => {
+                other_neuron.weight = Math.random();
+                // need way here for no recurrent
+                // other_neuron.synapses = [];
+                // other_neuron.dendrites = [];
+                return other_neuron
             })
+        });
 
-            neuron.dendrites = neuron.dendrites.map(other_neuron => Object.assign({}, other_neuron, {
-                synapses: undefined,
-                dendrites: undefined
-            }));
+        this.neurons.forEach((neuron) => {
+            this.neurons.forEach(other_neuron => {
+                if (neuron.synapses.map((b) => b.id) == other_neuron.id.indexOf())
+                    neuron.dendrites.push(other_neuron)
+            });
+
+            neuron.dendrites = neuron.dendrites.map(other_neuron => {
+                // need way here for no recurrent
+                // other_neuron.synapses = [];
+                // other_neuron.dendrites = [];
+                return other_neuron
+            })
         });
     }
 
     wakeup(engine) {
+        this.impulse(Math.round(Math.random() * this.neurons.length), 1)
         let inverval = 0;
         setInterval(() => {
-            if ((inverval % 30) == 0) {
-                this.impulse(0, Math.random())
-            }
+            // add this per function
+            // if ((inverval % 1) == 0) {
+            //     this.impulse(Math.round(Math.random() * this.neurons.length), Math.random())
+            // }
 
-            if ((inverval % 1) == 0) {
-                this.neurons.forEach(neuron => {
-                    neuron.value *= 0.95
-                })
+
+            if ((inverval % 10) == 0) {
+                if ((inverval % 1) == 0) {
+                    this.neurons.forEach(neuron => {
+                        // degrece
+                        neuron.value *= 0.7
+                    })
+                }
+
+                if (!this.impulses.length) {
+                    let new_impulses = this.listActivations(Function.activation.SIGMOID)
+                    this.impulses = this.impulses.concat(...new_impulses);
+                } else {
+                    let index_to = getIndexByID(this.neurons, this.impulses[0].id);
+                    // let index_from = getIndexByID(this.neurons, this.impulses[0].from);
+                    this.impulse(index_to, this.impulses[0].value)
+                    this.impulses.shift();
+                }
             }
 
             engine.update(this)
             engine.render();
-
-            if (!this.impulses.length) {
-                inverval++;
-                let new_impulses = this.listActivations(Function.activation.SIGMOID)
-                this.impulses = this.impulses.concat(...new_impulses);
-            } else {
-                let index = getIndexByID(this.neurons, this.impulses[0].id);
-                this.impulse(index, this.impulses[0].value)
-                this.impulses.shift();
-            }
-            engine.render();
-        }, 1000/144);
+            inverval++;
+        }, 1000 / 144);
     }
 
     /**
@@ -93,8 +108,8 @@ class Network {
 
     listActivations() {
         var tasks = [];
-        this.neurons.forEach(neuron => {
-            let value = neuron.impulse();
+        this.neurons.forEach((neuron, i) => {
+            let value = this.neurons[i].impulse();
             if (!value) return;
             neuron.synapses.forEach(synapse => {
                 tasks.push({

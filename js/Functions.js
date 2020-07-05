@@ -30,10 +30,10 @@ module.exports = {
                     Math.pow((another.position.y - other.position.y), 2) +
                     Math.pow((another.position.z - other.position.z), 2)), 0.5)
 
-                let already_connected = another.synapses.filter(synapse => {
-                    return synapse.id == other.id
-                }).length == 1;
-                if (d < radius && other.id != another.id && !already_connected)
+                // let already_connected = another.synapses.filter(synapse => {
+                //     return synapse.id == other.id
+                // }).length == 1;
+                if (d < radius && other.id != another.id ) // && !already_connected)
                     return true;
                 else
                     return false

@@ -48,11 +48,13 @@ class Engine {
     update(net) {
         net.neurons.forEach((neuron, i) => {
             let n = this.scene.getObjectByName(neuron.id)
-            n.material.color = {
-                r: i == 0 ? 1 : neuron.value,
-                g: i == 0 ? 1 : neuron.value*0.2,
-                b: i == 0 ? 1 : neuron.value*0.2
-            };
+            if (neuron.value != 0)
+                n.material.color = {
+                    r: neuron.value,
+                    g: neuron.value * 0.2,
+                    b: neuron.value * 0.2
+                };
+            // if (neuron.outgoing_impulse !== 0)
         })
     }
 
@@ -64,8 +66,10 @@ class Engine {
         net.neurons.forEach((neuron, i) => {
             var geometry = new THREE.SphereGeometry(neuron.size / 2, 32, 32);
             var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-                color: neuron.color
+                color: 0x000000
             }));
+
+
             sphere.position.x = neuron.position.x
             sphere.position.y = neuron.position.y
             sphere.position.z = neuron.position.z
@@ -83,7 +87,7 @@ class Engine {
                 var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
                     color: 0x0
                 }));
-                // this.scene.add(line);
+                this.scene.add(line);
             })
         })
     }
