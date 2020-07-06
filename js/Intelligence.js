@@ -3,28 +3,26 @@ const Functions = require('./Functions')
 const Engine = require('./Engine')
 
 const net = new Network();
-const engine = new Engine(Functions.activation.SIGMOID);
-// window.requestAnimationFrame(engine.render);
+const engine = new Engine(144);
 
-net.addCluser(Functions.volume.CIRCULAR(8), 100)
-net.connectNeurons(Functions.connector.CLOSE(10))
+net.addCluser(Functions.volume.CIRCULAR(5), 25)
+net.addCluser(Functions.volume.CIRCULAR(10), 50)
+net.addCluser(Functions.volume.CIRCULAR(20), 100)
+net.connectNeurons(Functions.connector.CLOSE(12))
 
-engine.build(net)
-net.wakeup(engine)
+engine.build(net, false)
+engine.start()
+
+net.wakeup(engine, 144)
 
 document.body.onmouseup = function () {
-    if( engine.selected)
-    net.impulse(getIndexByUUID(net.neurons, engine.selected.object.name), 1)
+    if (engine.selectedNeuron && !engine.selectedNeuron.last)
+        net.impulses.push({
+            target: engine.selectedNeuron,
+            uuid: '',
+            value: 1
+        });
 };
-
-
-function getIndexByUUID(arr, uuid) {
-    let index = -1;
-    arr.forEach((a, i) => {
-        if (a.uuid == uuid) index = i;
-    })
-    return index
-}
 
 // just in case
 // for (;;) {

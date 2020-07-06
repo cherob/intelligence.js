@@ -1,20 +1,16 @@
-var uuid = require('uuid');
+const uuid = require('uuid');
 
 class Neuron {
-    constructor(size, activator) {
+    constructor(activator) {
         const {
             defaults
         } = this.constructor;
         this.activator = activator;
-        this.connectifity = 0.8;
-        this.capacity = 3;
-
-        this.tolerance = 0.5;
+        this.connectifity = 1;
+        this.capacity = 20;
+        this.tolerance = activator(0);
 
         this.uuid = uuid.v4(); // uuid
-
-        this.size = size();
-
 
         this.position = {
             x: 0,
@@ -27,14 +23,18 @@ class Neuron {
         this.value = 0;
     }
 
-    impulse() {
+    getImpulseValue() {
         let i = 0
         i = this.activator(this.value);
         this.value = 0;
-        if (i  > this.tolerance){
-            this.tolerance *= 0.9;
-            return i
-        }
+        if (i <= this.tolerance)
+            return false
+
+        if (this.tolerance <= 1)
+            this.tolerance -= this.tolerance * 0.1;
+
+        return i
+
     }
 }
 module.exports = Neuron;

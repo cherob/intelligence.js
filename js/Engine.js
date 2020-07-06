@@ -2,19 +2,36 @@ const THREE = require('three');
 const OrbitControls = require('three-orbitcontrols');
 const dat = require('dat.gui');
 const Network = require('./Network');
+const Neuron = require('./Neuron');
 
 class Engine {
-    constructor() {
+    /**
+     * 
+     * @param {Number} zoom 
+     * @param {Array<Number>} render_range 
+     */
+    constructor(fps = 144, zoom = 20, view_range = [0.1, 100]) {
+        this.fps = fps
+        this.selectedNeuron = {
+            uuid: undefined,
+            last: false
+        }
+
         this.scene = new THREE.Scene()
         this.scene.background = new THREE.Color(0xf5eded)
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100)
-        this.camera.position.z = 20
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, view_range[0], view_range[1])
+        this.camera.position.z = zoom
 
         this.renderer = new THREE.WebGLRenderer()
         this.renderer.setSize(window.innerWidth, window.innerHeight)
 
         document.body.appendChild(this.renderer.domElement)
 
+        /** Raycaster
+         * This class is designed to assist with raycasting. 
+         * Raycasting is used for mouse picking amongst other things.
+         *  (working out what objects in the 3d space the mouse is over) 
+         */
         this.raycaster = new THREE.Raycaster();
 
         /** AxesHelper
@@ -30,39 +47,26 @@ class Engine {
          * have to include the file seperately in your HTML.
          */
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-
-
     }
 
-    /**
+    /** 
+     * Start render with given fps
+     */
+    start() {
+        setInterval(() => {
+            this.camera.updateMatrixWorld();
+            this.controls.update();
+            this.renderer.render(this.scene, this.camera)
+        }, 1000 / this.fps);
+    }
+
+    /** 
      * 
      * @param {Network} net 
      */
     update(net) {
-        net.neurons.forEach((neuron, i) => {
-            let n = this.scene.getObjectByName(neuron.uuid)
-            if (this.selected) {
-                if (neuron.uuid == this.selected.object.name) {
-                    n.material.color = {
-                        r: 0.7,
-                        g: 0.7,
-                        b: neuron.value * 0.2
-                    };
-                    return;
-                }
-            }
-
-            n.material.color = {
-                r: neuron.value,
-                g: neuron.value * 0.2,
-                b: neuron.value * 0.2
-            };
-        })
-
-        this.updateIntersect(net);
-        this.camera.updateMatrixWorld();
-        this.controls.update();
-        this.renderer.render(this.scene, this.camera)
+        this.selectedNeuron = this.getSelectedNeuron();
+        this.updateNeurons(net);
     }
 
     /**
@@ -71,34 +75,10 @@ class Engine {
      */
     build(net, lines = true) {
         net.neurons.forEach(neuron => {
-
-
-            var geometry = new THREE.SphereGeometry(neuron.size, 32, 32);
-            var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-                color: 0x000000
-            }));
-
-
-            sphere.position.x = neuron.position.x
-            sphere.position.y = neuron.position.y
-            sphere.position.z = neuron.position.z
-            sphere.uuid = neuron.uuid
-            sphere.name = neuron.uuid
-            this.scene.add(sphere);
+            this.generateNeuron(neuron);
 
             if (lines)
-                neuron.synapses.forEach(synapse => {
-                    var points = [];
-                    points.push(new THREE.Vector3(synapse.position.x, synapse.position.y, synapse.position.z));
-                    points.push(new THREE.Vector3(neuron.position.x, neuron.position.y, neuron.position.z));
-    
-                    var geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-                    var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-                        color: 0x0
-                    }));
-                    this.scene.add(line);
-                })
+                this.generateConnections(neuron);
         })
     }
 
@@ -106,18 +86,94 @@ class Engine {
      * 
      * @param {Network} net 
      */
-    updateIntersect(net) {
+    updateNeurons(net) {
+        net.neurons.forEach((neuron, i) => {
+            let neuron3D = this.scene.getObjectByProperty('uuid', neuron.uuid)
+            neuron3D.scale.setScalar(1 - neuron.tolerance)
+            neuron3D.material.color = {
+                r: neuron.uuid == this.selectedNeuron.uuid ? 0.3 : neuron.value,
+                g: neuron.uuid == this.selectedNeuron.uuid ? 0.7 : neuron.value * 0.2,
+                b: neuron.uuid == neuron.value * 0.2
+            };
+        })
+
+        if (!this.selectedNeuron.uuid) return
+
+        net.neurons.forEach((neuron) => neuron.synapses.forEach(synapse => {
+            let synapse3D = this.scene.getObjectByProperty('uuid', synapse.uuid)
+            if (!synapse3D) return
+            
+            synapse3D.visible = false;
+        }));
+
+        net.neurons[net.getNeuronIndexByUUID(this.selectedNeuron.uuid)].synapses.forEach(synapse => {
+            let synapse3D = this.scene.getObjectByProperty('uuid', synapse.uuid)
+            if (!synapse3D) return
+
+            synapse3D.visible = true;
+            synapse3D.material.color = {
+                r: synapse.weight / 10,
+                g: 0,
+                b: 0
+            };
+        });
+
+
+    }
+
+    /**
+     * 
+     * @param {Neuron} neuron 
+     */
+    generateNeuron(neuron) {
+        var geometry = new THREE.SphereGeometry(1 - neuron.tolerance, 4, 4);
+        var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+            color: 0x000000
+        }));
+
+        sphere.position.set(...Object.values(neuron.position));
+        sphere.uuid = neuron.uuid
+        this.scene.add(sphere);
+    }
+
+    /**
+     * 
+     * @param {Neuron} neuron 
+     */
+    generateConnections(neuron) {
+        neuron.synapses.forEach(synapse => {
+
+            var points = [];
+            points.push(new THREE.Vector3(synapse.target.position.x, synapse.target.position.y, synapse.target.position.z));
+            points.push(new THREE.Vector3(neuron.position.x, neuron.position.y, neuron.position.z));
+
+            var geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+
+            var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+                color: 0x0
+            }));
+            line.uuid = synapse.uuid;
+            line.visible = false;
+
+            this.scene.add(line);
+        })
+    }
+
+    /**
+     * @returns {THREE.Object3D}
+     */
+    getSelectedNeuron() {
         // find intersections
         this.raycaster.setFromCamera(getMouse(), this.camera);
 
         // calculate objects intersecting the picking ray
         var intersects = this.raycaster.intersectObjects(this.scene.children);
         intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
-        if (intersects.length) {
-            this.selected = intersects[0];
-        } else {
-            this.selected = undefined
-        }
+        if (intersects.length)
+            return intersects[0].object;
+        this.selectedNeuron.last = true;
+        return this.selectedNeuron;
     }
 
 
