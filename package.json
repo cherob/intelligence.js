@@ -1,6 +1,6 @@
 {
   "name": "intelligence",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "",
   "main": "app.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "browserify-middleware": "^8.1.1",
     "dat.gui": "^0.7.7",
+    "express": "^4.17.1",
     "jquery": "^3.5.1",
     "lodash": "^4.17.15",
     "three": "^0.118.3",
