@@ -10,10 +10,16 @@
   "license": "ISC",
   "dependencies": {
     "browserify-middleware": "^8.1.1",
+    "cli-progress": "^3.9.0",
+    "connect-livereload": "^0.6.1",
     "dat.gui": "^0.7.7",
     "express": "^4.17.1",
+    "gpu.js": "^2.11.2",
     "jquery": "^3.5.1",
-    "lodash": "^4.17.15",
+    "livereload": "^0.9.1",
+    "lodash": "^4.17.20",
+    "p5": "^1.2.0",
+    "pixi.js": "^5.3.7",
     "three": "^0.118.3",
     "three-orbitcontrols": "^2.110.3",
     "uuid": "^8.2.0"

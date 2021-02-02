@@ -1,8 +1,8 @@
 const THREE = require('three');
 const OrbitControls = require('three-orbitcontrols');
 const dat = require('dat.gui');
-const Network = require('./Network');
-const Neuron = require('./Neuron');
+const Network = require('./network/Network');
+const Neuron = require('./network/Neuron');
 
 class Engine {
     /**
@@ -10,12 +10,12 @@ class Engine {
      * @param {Number} zoom 
      * @param {Array<Number>} render_range 
      */
-    constructor(fps = 144, zoom = 20, view_range = [0.1, 100]) {
+    constructor(network, fps = 144, zoom = 20, view_range = [0.1, 100]) {
         this.fps = fps
-        this.selectedNeuron = {
-            uuid: undefined,
-            last: false
-        }
+        this.selectedNeuron = {};
+        this.network = network;
+
+        this.neuron_size_factor = 0.7
 
         this.scene = new THREE.Scene()
         this.scene.background = new THREE.Color(0xf5eded)
@@ -53,11 +53,37 @@ class Engine {
      * Start render with given fps
      */
     start() {
-        setInterval(() => {
-            this.camera.updateMatrixWorld();
-            this.controls.update();
-            this.renderer.render(this.scene, this.camera)
-        }, 1000 / this.fps);
+        window.requestAnimationFrame(this.render.bind(this));
+        window.onresize = () => {
+            this.renderer.setSize(window.innerWidth, window.innerHeight)
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+        };
+    }
+
+    render() {
+        this.camera.updateMatrixWorld();
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera)
+
+        window.requestAnimationFrame(this.render.bind(this));
+    }
+
+    getSelectedNeuron() {
+        // find intersections
+        this.raycaster.setFromCamera(getMouse(), this.camera);
+
+        // calculate objects intersecting the picking ray
+        var intersects = this.raycaster.intersectObjects(this.scene.children);
+        intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
+
+        if (intersects[0]) {
+            if (!this.selectedNeuron || intersects[0].uuid !== this.selectedNeuron.uuid)
+                return intersects[0].object
+
+        }
+
+        return undefined
     }
 
     /** 
@@ -65,60 +91,72 @@ class Engine {
      * @param {Network} net 
      */
     update(net) {
+
         this.selectedNeuron = this.getSelectedNeuron();
-        this.updateNeurons(net);
-    }
+        let check_uuid = this.selectedNeuron ? this.selectedNeuron.uuid : false;
 
-    /**
-     * 
-     * @param {Network} net 
-     */
-    build(net, lines = true) {
-        net.neurons.forEach(neuron => {
-            this.generateNeuron(neuron);
-
-            if (lines)
-                this.generateConnections(neuron);
-        })
-    }
-
-    /**
-     * 
-     * @param {Network} net 
-     */
-    updateNeurons(net) {
         net.neurons.forEach((neuron, i) => {
             let neuron3D = this.scene.getObjectByProperty('uuid', neuron.uuid)
-            neuron3D.scale.setScalar(1 - neuron.tolerance)
+            neuron3D.scale.setScalar(neuron.tolerance * this.neuron_size_factor)
             neuron3D.material.color = {
-                r: neuron.uuid == this.selectedNeuron.uuid ? 0.3 : neuron.value,
-                g: neuron.uuid == this.selectedNeuron.uuid ? 0.7 : neuron.value * 0.2,
-                b: neuron.uuid == neuron.value * 0.2
+                r: neuron.uuid == check_uuid ? 0.25 : neuron.value + 0.1,
+                g: neuron.uuid == check_uuid ? 0.2 : neuron.value * 0.2 + 0.1,
+                b: neuron.uuid == check_uuid ? 0.6 : neuron.value * 0.2 + 0.1
             };
         })
 
-        if (!this.selectedNeuron.uuid) return
-
-        net.neurons.forEach((neuron) => neuron.synapses.forEach(synapse => {
-            let synapse3D = this.scene.getObjectByProperty('uuid', synapse.uuid)
-            if (!synapse3D) return
-            
-            synapse3D.visible = false;
-        }));
-
-        net.neurons[net.getNeuronIndexByUUID(this.selectedNeuron.uuid)].synapses.forEach(synapse => {
-            let synapse3D = this.scene.getObjectByProperty('uuid', synapse.uuid)
-            if (!synapse3D) return
-
-            synapse3D.visible = true;
-            synapse3D.material.color = {
-                r: synapse.weight / 10,
-                g: 0,
-                b: 0
-            };
+        this.scene.children.forEach((child) => {
+            if (child.type == "Line")
+                this.scene.remove(child);
         });
 
+        if (!this.selectedNeuron) return;
 
+        let selectedNeuron = net.neurons[net.getNeuronIndexByUUID(this.selectedNeuron.uuid)]
+        if (!selectedNeuron) return
+
+        selectedNeuron.synapses.forEach(synapse => {
+            var points = [];
+            // if (this.scene.getObjectById(synapse.uuid)) return false
+
+            points.push(new THREE.Vector3(synapse.to.position.x, synapse.to.position.y, synapse.to.position.z));
+            points.push(new THREE.Vector3(synapse.from.position.x, synapse.from.position.y, synapse.from.position.z));
+
+            let geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+            let line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+                color: 0x44BBFF
+            }));
+            line.uuid = synapse.uuid;
+            this.scene.add(line);
+        })
+
+        selectedNeuron.dendrites.forEach(dendrite => {
+            var points = [];
+            // if (this.scene.getObjectById(dendrite.uuid)) return false
+
+            points.push(new THREE.Vector3(dendrite.to.position.x, dendrite.to.position.y, dendrite.to.position.z));
+            points.push(new THREE.Vector3(dendrite.from.position.x, dendrite.from.position.y, dendrite.from.position.z));
+            let geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+            let line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+                color: 0xFFBB44
+            }));
+            line.uuid = dendrite.uuid;
+            this.scene.add(line);
+        })
+
+    }
+
+    /**
+     * 
+     * @param {Network} net 
+     */
+    build() {
+        this.network.neurons.forEach(neuron => {
+            this.generateNeuron(neuron);
+
+        })
     }
 
     /**
@@ -126,7 +164,7 @@ class Engine {
      * @param {Neuron} neuron 
      */
     generateNeuron(neuron) {
-        var geometry = new THREE.SphereGeometry(1 - neuron.tolerance, 4, 4);
+        var geometry = new THREE.SphereGeometry(neuron.tolerance * this.neuron_size_factor, 4, 4);
         var sphere = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
             color: 0x000000
         }));
@@ -135,48 +173,6 @@ class Engine {
         sphere.uuid = neuron.uuid
         this.scene.add(sphere);
     }
-
-    /**
-     * 
-     * @param {Neuron} neuron 
-     */
-    generateConnections(neuron) {
-        neuron.synapses.forEach(synapse => {
-
-            var points = [];
-            points.push(new THREE.Vector3(synapse.target.position.x, synapse.target.position.y, synapse.target.position.z));
-            points.push(new THREE.Vector3(neuron.position.x, neuron.position.y, neuron.position.z));
-
-            var geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-
-            var line = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-                color: 0x0
-            }));
-            line.uuid = synapse.uuid;
-            line.visible = false;
-
-            this.scene.add(line);
-        })
-    }
-
-    /**
-     * @returns {THREE.Object3D}
-     */
-    getSelectedNeuron() {
-        // find intersections
-        this.raycaster.setFromCamera(getMouse(), this.camera);
-
-        // calculate objects intersecting the picking ray
-        var intersects = this.raycaster.intersectObjects(this.scene.children);
-        intersects = intersects.filter(intersect => intersect.object.type == 'Mesh');
-        if (intersects.length)
-            return intersects[0].object;
-        this.selectedNeuron.last = true;
-        return this.selectedNeuron;
-    }
-
-
 }
 
 module.exports = Engine

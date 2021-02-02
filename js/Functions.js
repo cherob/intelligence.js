@@ -1,7 +1,13 @@
-const Neuron = require("./Neuron");
+const Neuron = require("./network/Neuron");
 const uuid = require('uuid');
 
 module.exports = {
+    distance: (a, b) => {
+        return Math.pow((
+            Math.pow((a.x - b.x), 2) +
+            Math.pow((a.y - b.y), 2) +
+            Math.pow((a.z - b.z), 2)), 0.5);
+    },
     volume: {
         CIRCULAR: (dimeter = 1) => {
             return () => {
@@ -32,46 +38,6 @@ module.exports = {
                 };
             }
         },
-    },
-    connector: {
-        CLOSE: (radius = 1 / 4) => {
-            /**
-             * 
-             * @param {Neuron} neuron 
-             * @param {Array<Neuron>} neurons 
-             */
-            function func(neuron, neurons) {
-                let synapses = [];
-
-                neurons.forEach(
-                    /**
-                     * @param {Neuron} other
-                     */
-                    function (other) {
-                        let d = Math.pow((
-                            Math.pow((neuron.position.x - other.position.x), 2) +
-                            Math.pow((neuron.position.y - other.position.y), 2) +
-                            Math.pow((neuron.position.z - other.position.z), 2)), 0.5)
-
-                        let random = (Math.random() * neuron.connectifity)
-                        if (random > 0.6) return
-
-                        if (d > radius) return
-                        if (other.uuid == neuron.uuid) return
-                        if (synapses.length > neuron.capacity) return
-                        if (neuron.uuid.indexOf(other.synapses.map((_) => _.target.uuid))) return
-
-
-                        synapses.push({
-                            target: other,
-                            uuid: uuid.v4(),
-                            weight: Math.random() * 10
-                        })
-                    });
-                return synapses
-            }
-            return func
-        }
     },
     activation: {
         SIGMOID: (t) => {
